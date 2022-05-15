@@ -7,7 +7,7 @@ plugins {
 }
 
 group 'dev.mayuna'
-version '1.0'
+version '0.1'
 
 repositories {
     flatDir { dirs "./libs/" }
@@ -27,8 +27,8 @@ dependencies {
     testImplementation 'com.google.code.gson:gson:2.9.0'
 
     // Lombok
-    compileOnly 'org.projectlombok:lombok:1.18.22'
-    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
     // JUnit
     testImplementation 'junit:junit:4.13.2'
