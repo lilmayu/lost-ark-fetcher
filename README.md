@@ -71,7 +71,7 @@ lostArkFetcher.fetchNewsTags();
 lostArkFetcher.fetchNews();
 lostArkFetcher.fetchNews(lostArkNewsTag);
 
-lostArkFetcher.fetchForums(forumsCategory);
+lostArkFetcher.fetchForums(forumCategory);
 lostArkFetcher.fetchForumTopic(topic); // LostArkForumTopic contains only few fields - not completed
 
 // Example

@@ -6,7 +6,7 @@ public enum LostArkRegion {
 
     NORTH_AMERICA_WEST("North America West", 0),
     NORTH_AMERICA_EAST("North America East", 1),
-    EUROPE_CENTER("Europe Central", 2),
+    EUROPE_CENTRAL("Europe Central", 2),
     EUROPE_WEST("Europe West", 3),
     SOUTH_AMERICA("South America", 4);
 

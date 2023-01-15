@@ -1,7 +1,5 @@
 package dev.mayuna.lostarkfetcher;
 
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonParser;
 import dev.mayuna.lostarkfetcher.objects.api.*;
 import dev.mayuna.lostarkfetcher.objects.api.other.LostArkNewsTag;
 import dev.mayuna.lostarkfetcher.objects.api.other.LostArkRegion;
@@ -35,121 +33,121 @@ public class LostArkFetcher extends SimpleAPI {
         return "";
     }
 
-    // https://forums.playlostark.com/c/official-news/official-news/53/l/latest.json?ascending=false
-
     public Action<LostArkServers> fetchServers() {
-        return new Action<>(this, LostArkServers.class, new APIRequest.Builder()
-                .setEndpoint(LostArkConstants.SERVER_STATUS_URL)
-                .setMethod("GET")
-                .build())
-                .onDeserialization(httpResponse -> {
-                    Document document = LostArkUtil.getDocument(httpResponse);
+        return new Action<>(this,
+                            LostArkServers.class,
+                            new APIRequest.Builder()
+                                    .setEndpoint(LostArkConstants.SERVER_STATUS_URL)
+                                    .setMethod("GET")
+                                    .build()
+        ).onDeserialization(httpResponse -> {
+            Document document = LostArkUtil.getDocument(httpResponse);
 
-                    // == Regions == //
-                    List<LostArkRegion> lostArkRegions = new LinkedList<>();
-                    Elements regionTabs = document.getElementsByClass("ags-ServerStatus-content-tabs-tabHeading");
+            // == Regions == //
+            List<LostArkRegion> lostArkRegions = new LinkedList<>();
+            Elements regionTabs = document.getElementsByClass("ags-ServerStatus-content-tabs-tabHeading");
 
-                    for (int i = 0; i < regionTabs.size(); i++) {
-                        Element regionTab = regionTabs.get(i);
-                        Attributes attributes = regionTab.attributes();
-                        Element label = regionTab.getElementsByClass("ags-ServerStatus-content-tabs-tabHeading-label").first();
+            for (int i = 0; i < regionTabs.size(); i++) {
+                Element regionTab = regionTabs.get(i);
+                Attributes attributes = regionTab.attributes();
+                Element label = regionTab.getElementsByClass("ags-ServerStatus-content-tabs-tabHeading-label").first();
 
-                        if (label == null) {
-                            throw new RuntimeException("Could not find label!");
-                        }
+                if (label == null) {
+                    throw new RuntimeException("Could not find label!");
+                }
 
-                        String regionName = label.text();
-                        String dataIndexAttribute = attributes.get("data-index");
+                String regionName = label.text();
+                String dataIndexAttribute = attributes.get("data-index");
 
-                        LostArkRegion lostArkRegion = LostArkRegion.get(regionName);
+                LostArkRegion lostArkRegion = LostArkRegion.get(regionName);
 
-                        if (lostArkRegion == null) {
-                            int dataIndex;
-                            try {
-                                dataIndex = NumberFormat.getInstance().parse(dataIndexAttribute).intValue();
-                            } catch (ParseException parseException) {
-                                throw new RuntimeException("Could not parse dataIndex attribute!", parseException);
-                            }
+                if (lostArkRegion == null) {
+                    int dataIndex;
+                    try {
+                        dataIndex = NumberFormat.getInstance().parse(dataIndexAttribute).intValue();
+                    } catch (ParseException parseException) {
+                        throw new RuntimeException("Could not parse dataIndex attribute!", parseException);
+                    }
+                    lostArkRegion = LostArkRegion.get(dataIndex);
+                    if (lostArkRegion == null) {
+                        throw new RuntimeException("Could not parse region! Text: " + regionName);
+                    }
+                }
 
-                            lostArkRegion = LostArkRegion.get(dataIndex);
+                if (!lostArkRegions.contains(lostArkRegion)) {
+                    lostArkRegions.add(lostArkRegion);
+                }
+            }
 
-                            if (lostArkRegion == null) {
-                                throw new RuntimeException("Could not parse region! Text: " + regionName);
-                            }
-                        }
+            // == Servers == //
+            List<LostArkServer> servers = new LinkedList<>();
+            Elements serverGroups = document.getElementsByClass("ags-ServerStatus-content-responses-response");
 
-                        if (!lostArkRegions.contains(lostArkRegion)) {
-                            lostArkRegions.add(lostArkRegion);
+            for (int i = 0; i < serverGroups.size(); i++) {
+                Element serverGroup = serverGroups.get(i);
+                Attributes attributes = serverGroup.attributes();
+
+                String dataIndexAttribute = attributes.get("data-index"); // Determines regions
+                int dataIndex;
+                try {
+                    dataIndex = NumberFormat.getInstance().parse(dataIndexAttribute).intValue();
+                } catch (ParseException parseException) {
+                    throw new RuntimeException("Could not parse dataIndex attribute!", parseException);
+                }
+                LostArkRegion lostArkRegion = LostArkRegion.get(dataIndex);
+
+                Elements serverList = serverGroup.getElementsByClass("ags-ServerStatus-content-responses-response-server");
+
+                for (int x = 0; x < serverList.size(); x++) {
+                    Element serverElement = serverList.get(x);
+                    Element serverNameElement = serverElement.getElementsByClass("ags-ServerStatus-content-responses-response-server-name").first();
+                    if (serverNameElement == null) {
+                        continue;
+                    }
+                    String serverName = serverNameElement.text();
+                    LostArkServerStatus serverStatus = null;
+                    for (LostArkServerStatus status : LostArkServerStatus.values()) {
+                        if (!serverElement.getElementsByClass(status.getCSS()).isEmpty()) {
+                            serverStatus = status;
+                            break;
                         }
                     }
-
-                    // == Servers == //
-                    List<LostArkServer> servers = new LinkedList<>();
-                    Elements serverGroups = document.getElementsByClass("ags-ServerStatus-content-responses-response");
-
-                    for (int i = 0; i < serverGroups.size(); i++) {
-                        Element serverGroup = serverGroups.get(i);
-                        Attributes attributes = serverGroup.attributes();
-
-                        String dataIndexAttribute = attributes.get("data-index"); // Determines regions
-                        int dataIndex;
-                        try {
-                            dataIndex = NumberFormat.getInstance().parse(dataIndexAttribute).intValue();
-                        } catch (ParseException parseException) {
-                            throw new RuntimeException("Could not parse dataIndex attribute!", parseException);
-                        }
-                        LostArkRegion lostArkRegion = LostArkRegion.get(dataIndex);
-
-                        Elements serverList = serverGroup.getElementsByClass("ags-ServerStatus-content-responses-response-server");
-
-                        for (int x = 0; x < serverList.size(); x++) {
-                            Element serverElement = serverList.get(x);
-                            Element serverNameElement = serverElement.getElementsByClass("ags-ServerStatus-content-responses-response-server-name").first();
-
-                            if (serverNameElement == null) {
-                                continue;
-                            }
-
-                            String serverName = serverNameElement.text();
-                            LostArkServerStatus serverStatus = null;
-
-                            for (LostArkServerStatus status : LostArkServerStatus.values()) {
-                                if (!serverElement.getElementsByClass(status.getCSS()).isEmpty()) {
-                                    serverStatus = status;
-                                    break;
-                                }
-                            }
-
-                            if (serverStatus == null) {
-                                serverStatus = LostArkServerStatus.OFFLINE;
-                            }
-
-                            servers.add(new LostArkServer(serverName, lostArkRegion, serverStatus));
-                        }
+                    if (serverStatus == null) {
+                        serverStatus = LostArkServerStatus.OFFLINE;
                     }
+                    servers.add(new LostArkServer(serverName, lostArkRegion, serverStatus));
+                }
+            }
 
-                    return new LostArkServers(servers);
-                });
+            String lastUpdatedTime = null;
+            Elements elements = document.getElementsByClass("ags-ServerStatus-content-lastUpdated");
+            if (!elements.isEmpty()) {
+                lastUpdatedTime = elements.get(0).text();
+            }
+            return new LostArkServers(servers, lastUpdatedTime);
+        });
     }
 
     public Action<LostArkNewsTag[]> fetchNewsTags() {
-        return new Action<>(this, LostArkNewsTag[].class, new APIRequest.Builder()
-                .setEndpoint(LostArkConstants.NEWS_URL)
-                .setMethod("GET")
-                .build())
-                .onDeserialization(httpResponse -> {
-                    Document document = LostArkUtil.getDocument(httpResponse);
+        return new Action<>(this,
+                            LostArkNewsTag[].class,
+                            new APIRequest.Builder()
+                                    .setEndpoint(LostArkConstants.NEWS_URL)
+                                    .setMethod("GET")
+                                    .build()
+        ).onDeserialization(httpResponse -> {
+            Document document = LostArkUtil.getDocument(httpResponse);
 
-                    Elements newsTagElements = document.getElementsByClass("ags-NewsLandingPage-filter-popoverListItem");
-                    LostArkNewsTag[] newsTags = new LostArkNewsTag[newsTagElements.size()];
+            Elements newsTagElements = document.getElementsByClass("ags-NewsLandingPage-filter-popoverListItem");
+            LostArkNewsTag[] newsTags = new LostArkNewsTag[newsTagElements.size()];
 
-                    for (int i = 0; i < newsTagElements.size(); i++) {
-                        Element newsTag = newsTagElements.get(i);
-                        newsTags[i] = new LostArkNewsTag(newsTag.text());
-                    }
+            for (int i = 0; i < newsTagElements.size(); i++) {
+                Element newsTag = newsTagElements.get(i);
+                newsTags[i] = new LostArkNewsTag(newsTag.text());
+            }
 
-                    return newsTags;
-                });
+            return newsTags;
+        });
     }
 
     public Action<LostArkNews[]> fetchNews() {
@@ -168,8 +166,9 @@ public class LostArkFetcher extends SimpleAPI {
         return new Action<>(this, LostArkNews[].class, new APIRequest.Builder()
                 .setEndpoint(requestUrl)
                 .setMethod("GET")
-                .build())
-                .onDeserialization(httpResponse -> {
+                .build()
+        ).onDeserialization(
+                httpResponse -> {
                     Document document = LostArkUtil.getDocument(httpResponse);
 
                     Elements newsSlotModules = document.getElementsByClass("ags-SlotModule");
@@ -186,7 +185,8 @@ public class LostArkFetcher extends SimpleAPI {
                         String newsThumbnailUrl;
 
                         newsTag = new LostArkNewsTag(LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-aboveImageBlogTag").text());
-                        newsUrl = LostArkConstants.LOST_ARK_DOMAIN + LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-spacer").attr("href");
+                        newsUrl = LostArkConstants.LOST_ARK_DOMAIN + LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-spacer")
+                                                                                .attr("href");
                         newsThumbnailUrl = "https:" + LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-imageContainer-image").attr("src");
                         newsPublishDate = LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-contentContainer-date").text();
                         newsTitle = LostArkUtil.getFirstElement(newsSlotModule, "ags-SlotModule-contentContainer-heading").text();
@@ -199,17 +199,28 @@ public class LostArkFetcher extends SimpleAPI {
                 });
     }
 
-    public Action<LostArkForums> fetchForums(int forumCategory) {
-
-        return new Action<>(this, LostArkForums.class, new APIRequest.Builder()
-                .setEndpoint(LostArkConstants.FORUMS_URL)
-                .addPathParameter(new PathParameter("forum_category", String.valueOf(forumCategory)))
-                .setMethod("GET")
-                .build());
+    public Action<LostArkForumCategories> fetchForumCategories() {
+        return new Action<>(this,
+                            LostArkForumCategories.class,
+                            new APIRequest.Builder()
+                                    .setEndpoint(LostArkConstants.FORUM_CATEGORIES)
+                                    .setMethod("GET")
+                                    .build()
+        );
     }
 
-    public Action<LostArkForumTopic> fetchForumTopic(LostArkForums.TopicList.Topic topic) {
+    public Action<LostArkForum> fetchForum(int forumCategory) {
+        return new Action<>(this,
+                            LostArkForum.class,
+                            new APIRequest.Builder()
+                                    .setEndpoint(LostArkConstants.FORUM_URL)
+                                    .addPathParameter(new PathParameter("forum_category", String.valueOf(forumCategory)))
+                                    .setMethod("GET")
+                                    .build()
+        );
+    }
 
+    public Action<LostArkForumTopic> fetchForumTopic(LostArkForum.TopicList.Topic topic) {
         return new Action<>(this, LostArkForumTopic.class, new APIRequest.Builder()
                 .setEndpoint(topic.getJsonUrl())
                 .setMethod("GET")

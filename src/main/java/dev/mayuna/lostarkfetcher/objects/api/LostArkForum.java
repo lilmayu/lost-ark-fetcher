@@ -7,7 +7,10 @@ import dev.mayuna.simpleapi.deserializers.GsonDeserializer;
 import lombok.Getter;
 import lombok.NonNull;
 
-public class LostArkForums implements GsonDeserializer {
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class LostArkForum implements GsonDeserializer {
 
     private @Getter User[] users;
     private @Getter @SerializedName("primary_groups") PrimaryGroup[] primaryGroups;
@@ -52,6 +55,26 @@ public class LostArkForums implements GsonDeserializer {
         private @Getter @SerializedName("per_page") int perPage;
         private @Getter Topic[] topics;
 
+        /**
+         * Parses {@link #moreTopicsUrl} and gets lasts element between slashesh, which is usually forum name in lowercase and space is replaced by dash<br>
+         * For example: <code>/c/official-news/offizielle-neuigkeiten/14?page=1</code> returns <code>offizielle-neuigkeiten</code><br><br>
+         * This will work only if field "moreTopicsUrl" is not null
+         * @return Parsed {@link #moreTopicsUrl} or null if moreTopicsUrl is null
+         */
+        public String parseNameFromMoreTopicsUrl() {
+            if (moreTopicsUrl == null) {
+                return null;
+            }
+
+            Matcher matcher = Pattern.compile("(?<=/)[^/]+(?=/[^/]*$)").matcher(moreTopicsUrl);
+
+            if (matcher.find()) {
+                return matcher.group(matcher.groupCount());
+            }
+
+            return null;
+        }
+
         public static class Topic {
 
             private @Getter int id;
@@ -89,11 +112,11 @@ public class LostArkForums implements GsonDeserializer {
             private @Getter Poster[] posters;
 
             public String getUrl() {
-                return LostArkConstants.FORUMS_TOPIC_URL.replace("{slug}", slug).replace("{post_id}", String.valueOf(id));
+                return LostArkConstants.FORUM_TOPIC_URL.replace("{slug}", slug).replace("{post_id}", String.valueOf(id));
             }
 
             public String getJsonUrl() {
-                return LostArkConstants.FORUMS_TOPIC_JSON_URL.replace("{post_id}", String.valueOf(id));
+                return LostArkConstants.FORUM_TOPIC_JSON_URL.replace("{post_id}", String.valueOf(id));
             }
 
             public static class FirstTrackedPost {

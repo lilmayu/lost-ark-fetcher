@@ -4,10 +4,11 @@ plugins {
     id 'signing'
     id 'maven-publish'
     id "com.github.johnrengelman.shadow" version "7.1.2"
+    id "io.github.gradle-nexus.publish-plugin" version "1.1.0"
 }
 
 group 'dev.mayuna'
-version '0.1'
+version '0.2.3'
 
 repositories {
     flatDir { dirs "./libs/" }
@@ -17,13 +18,13 @@ repositories {
 
 dependencies {
     // Simple Java API Wrapper
-    api 'dev.mayuna:simple-java-api-wrapper:1.0.2'
+    compileOnly 'dev.mayuna:simple-java-api-wrapper:1.0.2'
 
     // Jsoup
-    api 'org.jsoup:jsoup:1.14.3'
+    compileOnly 'org.jsoup:jsoup:1.14.3'
 
     // GSON
-    api 'com.google.code.gson:gson:2.9.0'
+    compileOnly 'com.google.code.gson:gson:2.9.0'
     testImplementation 'com.google.code.gson:gson:2.9.0'
 
     // Lombok
@@ -37,8 +38,9 @@ dependencies {
 
 // == Quick tasks == //
 
-publish {
-
+task publishCloseAndRelease() {
+    dependsOn 'publishToSonatype'
+    dependsOn 'closeAndReleaseSonatypeStagingRepository'
 }
 
 shadowJar {
@@ -105,6 +107,17 @@ publishing {
 
 signing {
     sign publishing.publications.shadow
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl.set(uri("https://s01.oss.sonatype.org/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://s01.oss.sonatype.org/content/repositories/snapshots/"))
+            username = "$ossrhUsername"
+            password = "$ossrhPassword"
+        }
+    }
 }
 
 java {
